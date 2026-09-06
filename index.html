@@ -893,7 +893,7 @@ function mensajeDeError(codigo){
 }
 
 // El texto viene del modelo: se pinta como texto, nunca como HTML.
-function mostrarRevision(revision, error){
+function mostrarRevision(revision, error, truncada){
   cerrarRevision();
   const caja = document.createElement("div");
   caja.id = "revision";
@@ -923,7 +923,9 @@ function mostrarRevision(revision, error){
   if (!error){
     const pie = document.createElement("p");
     pie.className = "revision-pie";
-    pie.textContent = "Esto no se guarda: es una lectura de cómo están planteados tus enunciados, no un diagnóstico.";
+    pie.textContent = truncada
+      ? "Se cortó antes de terminar: son muchos enunciados para una sola revisión. Revisa unos cuantos a la vez. Esto no se guarda."
+      : "Esto no se guarda: es una lectura de cómo están planteados tus enunciados, no un diagnóstico.";
     caja.append(pie);
   }
 
@@ -957,7 +959,7 @@ async function pedirRevision(){
       mostrarRevision(null, mensajeDeError(r.status));
     } else {
       const j = await r.json();
-      if (j && j.revision) mostrarRevision(j.revision, null);
+      if (j && j.revision) mostrarRevision(j.revision, null, j.truncada);
       else mostrarRevision(null, "El revisor respondió vacío. Intenta otra vez. Tu texto está guardado.");
     }
   }catch(e){

@@ -145,10 +145,22 @@ a hacer `npx wrangler deploy`. El cliente no se toca.
 
 | Constante en `proxy/src/index.ts` | Valor |
 |---|---|
-| `MODELO` | `claude-sonnet-4-6` |
-| `MAX_TOKENS` | 1000 |
-| `MAX_CARACTERES` | 6000 (arriba de eso el proxy responde 413) |
+| `MODELO` | `claude-sonnet-5` |
+| `MAX_TOKENS` | 6000 |
+| `MAX_CARACTERES` | 12000 (arriba de eso el proxy responde 413) |
 | `ORIGEN_APP` | `https://aeal0692-oss.github.io` — único origen con CORS |
+
+**Ojo con `MAX_TOKENS` en Sonnet 5.** Omitir el parámetro `thinking` no apaga el
+razonamiento: lo deja en adaptativo. El razonamiento sale del mismo presupuesto que la
+respuesta, así que `MAX_TOKENS` tiene que cubrir las dos cosas. Con el techo en 1000 la
+revisión se cortaba en cuanto había más de unos pocos enunciados. Solo se paga lo que se
+genera, así que un techo alto no cuesta de más. Para gastar menos, agrégale
+`output_config: { effort: "medium" }` a la llamada.
+
+El límite de palabras que se le pide al revisor **escala con cuántos enunciados mandaste**
+(`presupuestoPalabras`): 200 como piso, unas 55 por enunciado, 700 como techo. Compruébalo
+con `npm run prueba`. Si aun así se corta, el proxy devuelve `truncada: true` y la app lo
+dice en vez de dejarte con un texto cortado a media frase.
 
 Nota sobre CORS: es una protección del navegador, no un candado. Alguien que conozca la
 URL del Worker puede llamarlo desde fuera de un navegador y gastarte saldo. Si eso llega
