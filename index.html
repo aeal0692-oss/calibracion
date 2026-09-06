@@ -105,6 +105,45 @@ textarea::placeholder{color:#6C7C8C}
 .saved{font-family:var(--sans);font-size:.82rem;color:var(--steady);height:1.1rem;margin-top:.4rem;opacity:0;transition:opacity .25s}
 .saved.on{opacity:1}
 
+/* ---------- lista de enunciados ---------- */
+.card .conteo{
+  font-family:var(--sans);font-size:.84rem;color:var(--ink-dim);
+  margin:.9rem 0 .2rem;letter-spacing:.01em;
+}
+.enunciados{list-style:none;margin:.6rem 0 0;padding:0}
+.enun{
+  border:1px solid var(--line);border-left:2px solid var(--line);
+  border-radius:var(--radius);background:var(--ground);
+  padding:.7rem .8rem;margin-top:.55rem;
+}
+.enun[data-estado="heredado"]{border-left-color:var(--signal)}
+.enun[data-estado="comprobado"]{border-left-color:var(--steady)}
+.enun .enun-texto{
+  width:100%;min-height:0;margin:0;padding:0;overflow:hidden;
+  background:none;border:0;border-radius:0;color:var(--ink);
+  font-family:var(--serif);font-size:.98rem;line-height:1.5;resize:none;
+}
+.enun .enun-texto:focus{outline:none}
+.enun:focus-within{border-color:var(--ink-dim)}
+.enun-acciones{display:flex;align-items:center;gap:.4rem;margin-top:.6rem;flex-wrap:wrap}
+.marca{
+  background:none;border:1px solid var(--line);border-radius:var(--radius);
+  color:var(--ink-dim);font-size:.78rem;padding:.28rem .6rem;letter-spacing:.01em;
+}
+.marca:hover{color:var(--ink);border-color:var(--ink-dim)}
+.marca[aria-pressed="true"][data-estado="heredado"]{
+  background:var(--signal);border-color:var(--signal);color:#14202B;
+}
+.marca[aria-pressed="true"][data-estado="comprobado"]{
+  background:var(--steady);border-color:var(--steady);color:#14202B;
+}
+.enun-borrar{
+  margin-left:auto;background:none;border:0;padding:.28rem 0 .28rem .5rem;
+  color:#6C7C8C;font-size:.78rem;text-decoration:underline;
+}
+.enun-borrar:hover{color:var(--ink-dim)}
+.enun-vacio{font-size:.94rem;color:var(--ink-dim);margin:.9rem 0 0}
+
 /* ---------- botones ---------- */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
@@ -202,6 +241,12 @@ textarea::placeholder{color:#6C7C8C}
 footer{margin-top:2.5rem;font-family:var(--sans);font-size:.85rem;color:#6C7C8C}
 footer button{background:none;border:0;color:#6C7C8C;text-decoration:underline;padding:0;font-size:.85rem}
 footer button:hover{color:var(--ink-dim)}
+footer .sep{margin:0 .55rem}
+.respaldo-aviso{
+  font-family:var(--sans);font-size:.82rem;color:var(--steady);
+  margin:.7rem 0 0;min-height:1.1rem;
+}
+.respaldo-aviso.falla{color:var(--signal)}
 </style>
 </head>
 <body>
@@ -228,7 +273,9 @@ footer button:hover{color:var(--ink-dim)}
   </div>
 
   <footer>
-    <button id="reiniciar">Borrar todo y empezar de nuevo</button>
+    <button id="exportar">Descargar respaldo</button><span class="sep">·</span><button id="importar">Restaurar respaldo</button><span class="sep">·</span><button id="reiniciar">Borrar todo y empezar de nuevo</button>
+    <input type="file" id="archivo" accept="application/json,.json" hidden>
+    <p class="respaldo-aviso" id="respaldoAviso"></p>
   </footer>
 </div>
 
@@ -272,7 +319,8 @@ const SEMANAS = [
   escrito:{
     titulo:"Los diez enunciados",
     instruccion:"Completa diez veces la frase «Yo soy alguien que no puede…». Sin filtrar, sin editar. Cuando tengas los diez, vuelve y marca cuáles has comprobado de verdad y cuáles nada más heredaste.",
-    placeholder:"Yo soy alguien que no puede…"
+    placeholder:"Yo soy alguien que no puede…",
+    formato:"lista"
   },
   accion:"Ninguna. Esta semana solo observas. Cada vez que te frenes, anota la escena en dos líneas: qué ibas a hacer y qué frase apareció justo antes de no hacerlo.",
   guion:[
@@ -295,7 +343,8 @@ const SEMANAS = [
   escrito:{
     titulo:"Tres columnas",
     instruccion:"Toma tres de los enunciados de la semana pasada. Para cada uno escribe: qué pasó exactamente, qué concluiste, y qué otra lectura cabía con la misma evidencia.",
-    placeholder:"Qué pasó:\nQué concluí:\nQué otra lectura cabe:"
+    placeholder:"Qué pasó:\nQué concluí:\nQué otra lectura cabe:",
+    formato:"texto"
   },
   accion:"Elige un veredicto viejo y ponlo a prueba en pequeño esta semana. Si el archivo dice «no sirvo para hablar en público», di algo en una junta. Un dato nuevo pesa más que un argumento.",
   guion:[
@@ -318,7 +367,8 @@ const SEMANAS = [
   escrito:{
     titulo:"La escena",
     instruccion:"Describe una escena específica que hoy no puedes ejecutar bien. Con lugar, personas, hora. No «tener más seguridad», sino «mostrar lo que construí a alguien que respeto, sin adelantarme a disculparme».",
-    placeholder:"Dónde estoy, quién está, qué hago exactamente…"
+    placeholder:"Dónde estoy, quién está, qué hago exactamente…",
+    formato:"texto"
   },
   accion:"Escribe la escena en presente, en primera persona, en no más de ocho renglones. Es el guion que vas a usar cada día hasta la semana 8.",
   guion:[
@@ -342,7 +392,8 @@ const SEMANAS = [
   escrito:{
     titulo:"La lista de nombres",
     instruccion:"Escribe los nombres de quienes realmente temes que te vean fallar. Nombres propios, no «la gente». Al lado de cada uno anota cuándo hablaste con esa persona por última vez.",
-    placeholder:"Nombre — última vez que hablamos:"
+    placeholder:"Nombre — última vez que hablamos:",
+    formato:"texto"
   },
   accion:"Una exposición chica. Di en voz alta algo tuyo a una persona de esa lista, o publica algo mínimo. La meta no es que salga bien: es recolectar el dato de lo que de verdad pasa después.",
   guion:[
@@ -365,7 +416,8 @@ const SEMANAS = [
   escrito:{
     titulo:"Tres desvíos",
     instruccion:"Toma tres cosas que registras como fracasos. Escribe qué corrección concreta contenía cada una, y si la aplicaste o la enterraste junto con el episodio.",
-    placeholder:"Qué pasó — qué corrección traía — la usé o no:"
+    placeholder:"Qué pasó — qué corrección traía — la usé o no:",
+    formato:"texto"
   },
   accion:"Haz algo con alta probabilidad de salir mediocre, a propósito, y termínalo. Un borrador feo, una versión 0.1. El objetivo es demostrarle al sistema que sobrevives a hacerlo mal.",
   guion:[
@@ -388,7 +440,8 @@ const SEMANAS = [
   escrito:{
     titulo:"La carta del amigo",
     instruccion:"Escribe lo que le dirías a un amigo que llega con tu situación exacta y tu historial exacto. Con su nombre. Léela después y nota la distancia entre ese tono y el tuyo.",
-    placeholder:"Oye,…"
+    placeholder:"Oye,…",
+    formato:"texto"
   },
   accion:"Tres veces al día, cacha la frase con la que te hablas y vuélvela a decir como se la dirías a esa persona. No la borres: tradúcela.",
   guion:[
@@ -411,7 +464,8 @@ const SEMANAS = [
   escrito:{
     titulo:"El mínimo publicable",
     instruccion:"Define la versión más chica de tu cosa que ya puede existir afuera. Qué es, quién la va a ver, y el día y la hora exactos en que sale.",
-    placeholder:"Qué sale:\nQuién lo ve:\nDía y hora:"
+    placeholder:"Qué sale:\nQuién lo ve:\nDía y hora:",
+    formato:"texto"
   },
   accion:"Publicar. En la fecha que escribiste. Después anota qué pasó de verdad, no lo que temías: quién dijo qué, cuánto duró, qué se cayó y qué no.",
   guion:[
@@ -434,7 +488,8 @@ const SEMANAS = [
   escrito:{
     titulo:"El protocolo",
     instruccion:"Escribe: tres señales de que volviste al ajuste viejo, los veinte minutos que vas a hacer cuando las detectes, y la persona a la que le vas a avisar.",
-    placeholder:"Señales:\nMis veinte minutos:\nA quién le aviso:"
+    placeholder:"Señales:\nMis veinte minutos:\nA quién le aviso:",
+    formato:"texto"
   },
   accion:"Agenda dos cosas: una revisión de esto a treinta días, y la siguiente cosa que vas a sacar al mundo. La semana 7 no era el final, era el primer dato.",
   guion:[
@@ -452,7 +507,9 @@ const SEMANAS = [
    ESTADO
    ============================================================ */
 const CLAVE = "calibracion:estado";
-let E = { semana:1, dias:{}, diario:{}, inicio:null };
+const ESTADOS = ["sin_marcar", "heredado", "comprobado"];
+const vacio = () => ({ semana:1, dias:{}, diario:{}, enunciados:{}, inicio:null });
+let E = vacio();
 
 async function leer(){
   try{
@@ -497,6 +554,60 @@ function racha(){
 }
 
 /* ============================================================
+   ENUNCIADOS
+   Formato de lista, por ahora solo la semana 1. La bandera vive
+   en SEMANAS[n].escrito.formato: "lista" | "texto".
+   ============================================================ */
+const formatoDe = w => (SEMANAS[w-1].escrito.formato === "lista") ? "lista" : "texto";
+
+function idNuevo(){
+  try{ if (crypto && crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+  return "e-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10);
+}
+
+const nuevoEnunciado = (texto = "") => ({ id: idNuevo(), texto, estado: "sin_marcar" });
+
+const listaDe = w => E.enunciados[w] || [];
+
+/**
+ * Parte el textarea viejo en enunciados, una línea cada uno.
+ * Solo corre si la semana usa formato de lista, hay texto en E.diario
+ * y todavía no existe E.enunciados[w]. E.diario NO se borra: queda como
+ * respaldo por si la partición sale mal.
+ */
+function migrarEnunciados(w){
+  if (formatoDe(w) !== "lista") return false;
+  if (E.enunciados[w]) return false;
+  const lineas = (E.diario[w] || "").split("\n").map(l => l.trim()).filter(Boolean);
+  if (!lineas.length) return false;
+  E.enunciados[w] = lineas.map(l => nuevoEnunciado(l));
+  return true;
+}
+
+// Lo que ve el revisor: los textos concatenados, igual que antes.
+// El estado es del usuario y no se manda.
+function textoDelEjercicio(w){
+  if (formatoDe(w) === "lista"){
+    return listaDe(w).map(e => e.texto.trim()).filter(Boolean).join("\n");
+  }
+  return E.diario[w] || "";
+}
+
+function conteoDe(w){
+  const l = listaDe(w);
+  const heredados = l.filter(e => e.estado === "heredado").length;
+  const comprobados = l.filter(e => e.estado === "comprobado").length;
+  return { total: l.length, marcados: heredados + comprobados, heredados, comprobados };
+}
+
+function textoDelConteo(w){
+  const c = conteoDe(w);
+  if (!c.total) return "";
+  const plural = (n, s) => `${n} ${s}${n === 1 ? "" : "s"}`;
+  return `${c.marcados} de ${c.total} · ${plural(c.heredados, "heredado")} · ${plural(c.comprobados, "comprobado")}`;
+}
+
+/* ============================================================
    RENDER
    ============================================================ */
 const $ = s => document.querySelector(s);
@@ -514,11 +625,20 @@ function riel(){
   });
 }
 
+function avisoGuardado(){
+  const a = $("#aviso");
+  if (!a) return;
+  a.classList.add("on");
+  clearTimeout(a._t); a._t = setTimeout(()=>a.classList.remove("on"), 1400);
+}
+
 function pinta(){
   riel();
   const s = SEMANAS[viendo-1];
   const marcados = diasDe(s.n);
   const texto = E.diario[s.n] || "";
+  const esLista = formatoDe(s.n) === "lista";
+  if (migrarEnunciados(s.n)) guardar();
 
   $("#vista").innerHTML = `
   <article class="card">
@@ -542,7 +662,14 @@ function pinta(){
     <div class="block">
       <h3>${s.escrito.titulo}</h3>
       <p>${s.escrito.instruccion}</p>
-      <textarea id="diario" placeholder="${s.escrito.placeholder}">${texto}</textarea>
+      ${esLista ? `
+      <p class="conteo" id="conteo"></p>
+      <p class="enun-vacio" id="listaVacia" hidden>Todavía no hay enunciados. Agrega el primero.</p>
+      <ul class="enunciados" id="lista"></ul>
+      <div class="row">
+        <button class="btn ghost" id="agregar">Agregar enunciado</button>
+      </div>` : `
+      <textarea id="diario" placeholder="${s.escrito.placeholder}">${texto}</textarea>`}
       <div class="saved" id="aviso">Guardado</div>
       <div class="row" id="filaRevisar"></div>
     </div>
@@ -565,18 +692,156 @@ function pinta(){
   </article>`;
 
   $("#empezar").onclick = abrirSesion;
-  const ta = $("#diario");
-  ta.addEventListener("input", ()=>{
-    E.diario[viendo] = ta.value;
-    guardarPronto();
-    const a = $("#aviso"); a.classList.add("on");
-    clearTimeout(a._t); a._t = setTimeout(()=>a.classList.remove("on"), 1400);
-    ajustarBotonRevisar();
-  });
+  if (esLista){
+    pintarLista();
+    $("#agregar").onclick = agregarEnunciado;
+  } else {
+    const ta = $("#diario");
+    ta.addEventListener("input", ()=>{
+      E.diario[viendo] = ta.value;
+      guardarPronto();
+      avisoGuardado();
+      ajustarBotonRevisar();
+    });
+  }
   document.querySelectorAll("[data-ir]").forEach(b=>{
     b.onclick = ()=>{ viendo = +b.dataset.ir; pinta(); window.scrollTo({top:0,behavior:"smooth"}); };
   });
   montarRevisor();
+}
+
+/* ============================================================
+   RENDER DE LA LISTA
+   Las filas se construyen con nodos, nunca con innerHTML: el
+   texto es del usuario y no debe interpretarse como HTML.
+   ============================================================ */
+const escapar = s => (window.CSS && CSS.escape) ? CSS.escape(s) : s;
+const filaDe = id => $(`.enun[data-id="${escapar(id)}"]`);
+
+function crecer(ta){
+  ta.style.height = "auto";
+  ta.style.height = ta.scrollHeight + "px";
+}
+
+function actualizarConteo(){
+  const c = $("#conteo");
+  if (c) c.textContent = textoDelConteo(viendo);
+}
+
+function filaEnunciado(e){
+  const li = document.createElement("li");
+  li.className = "enun";
+  li.dataset.id = e.id;
+  li.dataset.estado = e.estado;
+
+  const ta = document.createElement("textarea");
+  ta.className = "enun-texto";
+  ta.rows = 1;
+  ta.value = e.texto;
+  ta.placeholder = SEMANAS[viendo-1].escrito.placeholder;
+  ta.setAttribute("aria-label", "Texto del enunciado");
+  ta.addEventListener("input", ()=> crecer(ta));
+  // Enter cierra el campo en vez de meter un salto de línea: un
+  // enunciado es una línea, y el revisor los recibe concatenados.
+  ta.addEventListener("keydown", ev=>{
+    if (ev.key === "Enter"){ ev.preventDefault(); ta.blur(); }
+  });
+  ta.addEventListener("blur", ()=>{
+    const item = listaDe(viendo).find(x => x.id === e.id);
+    if (!item) return;
+    const limpio = ta.value.replace(/[\r\n]+/g, " ").trim();
+    ta.value = limpio;
+    crecer(ta);
+    if (item.texto === limpio) return;
+    item.texto = limpio;
+    guardar();
+    avisoGuardado();
+    ajustarBotonRevisar();
+  });
+
+  const acciones = document.createElement("div");
+  acciones.className = "enun-acciones";
+
+  ["heredado", "comprobado"].forEach(estado=>{
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "marca";
+    b.dataset.estado = estado;
+    b.textContent = estado;
+    b.setAttribute("aria-pressed", String(e.estado === estado));
+    b.onclick = ()=> alternarEstado(e.id, estado);
+    acciones.append(b);
+  });
+
+  const borrar = document.createElement("button");
+  borrar.type = "button";
+  borrar.className = "enun-borrar";
+  borrar.textContent = "Borrar";
+  borrar.setAttribute("aria-label", "Borrar este enunciado");
+  borrar.onclick = ()=> borrarEnunciado(e.id);
+  acciones.append(borrar);
+
+  li.append(ta, acciones);
+  return li;
+}
+
+function pintarLista(){
+  const ul = $("#lista");
+  if (!ul) return;
+  const lista = listaDe(viendo);
+  ul.innerHTML = "";
+  lista.forEach(e => ul.append(filaEnunciado(e)));
+  ul.querySelectorAll(".enun-texto").forEach(crecer);
+  const vacia = $("#listaVacia");
+  if (vacia) vacia.hidden = lista.length > 0;
+  actualizarConteo();
+}
+
+// Los dos estados son excluyentes; volver a presionar el activo lo apaga.
+function alternarEstado(id, estado){
+  const item = listaDe(viendo).find(x => x.id === id);
+  if (!item) return;
+  item.estado = (item.estado === estado) ? "sin_marcar" : estado;
+  const li = filaDe(id);
+  if (li){
+    li.dataset.estado = item.estado;
+    li.querySelectorAll(".marca").forEach(b=>{
+      b.setAttribute("aria-pressed", String(b.dataset.estado === item.estado));
+    });
+  }
+  actualizarConteo();
+  guardar();
+  avisoGuardado();
+}
+
+function agregarEnunciado(){
+  if (!E.enunciados[viendo]) E.enunciados[viendo] = [];
+  const nuevo = nuevoEnunciado("");
+  E.enunciados[viendo].push(nuevo);
+  guardar();
+  pintarLista();
+  ajustarBotonRevisar();
+  const li = filaDe(nuevo.id);
+  if (li){
+    li.querySelector(".enun-texto").focus();
+    li.scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
+}
+
+function borrarEnunciado(id){
+  const lista = listaDe(viendo);
+  const item = lista.find(x => x.id === id);
+  if (!item) return;
+  const t = item.texto.trim();
+  const pregunta = t
+    ? `¿Borrar este enunciado?\n\n«${t.length > 90 ? t.slice(0,90) + "…" : t}»`
+    : "¿Borrar este enunciado vacío?";
+  if (!confirm(pregunta)) return;
+  E.enunciados[viendo] = lista.filter(x => x.id !== id);
+  guardar();
+  avisoGuardado();
+  pintarLista();
+  ajustarBotonRevisar();
 }
 
 /* ============================================================
@@ -611,7 +876,7 @@ function montarRevisor(){
 function ajustarBotonRevisar(){
   const b = $("#revisar");
   if (!b || b.dataset.cargando) return;
-  b.disabled = $("#diario").value.trim().length < MIN_REVISION;
+  b.disabled = textoDelEjercicio(viendo).trim().length < MIN_REVISION;
 }
 
 function cerrarRevision(){
@@ -668,8 +933,8 @@ function mostrarRevision(revision, error){
 
 async function pedirRevision(){
   const b = $("#revisar");
-  const ta = $("#diario");
-  const texto = ta.value.trim();
+  // En formato de lista van los textos concatenados; el estado no se manda.
+  const texto = textoDelEjercicio(viendo).trim();
   if (texto.length < MIN_REVISION) return;
 
   cerrarRevision();
@@ -778,10 +1043,137 @@ $("#terminar").onclick = async ()=>{
 
 $("#reiniciar").onclick = async ()=>{
   if (!confirm("Esto borra tus sesiones marcadas y todo lo escrito. ¿Seguir?")) return;
-  E = { semana:1, dias:{}, diario:{}, inicio:null };
+  E = vacio();
   await guardar();
   viendo = 1; pinta();
 };
+
+/* ============================================================
+   RESPALDO
+   El avance vive solo en este dispositivo. Esto lo baja como
+   archivo y lo vuelve a combinar. Importar nunca borra: une.
+   ============================================================ */
+function avisoRespaldo(texto, falla){
+  const p = $("#respaldoAviso");
+  if (!p) return;
+  p.textContent = texto;
+  p.classList.toggle("falla", !!falla);
+  clearTimeout(p._t);
+  p._t = setTimeout(()=>{ p.textContent = ""; p.classList.remove("falla"); }, 8000);
+}
+
+$("#exportar").onclick = ()=>{
+  const datos = { app:"calibracion", version:1, exportado:new Date().toISOString(), estado:E };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(datos, null, 2)], {type:"application/json"}));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `calibracion-${hoy()}.json`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  avisoRespaldo("Respaldo descargado.", false);
+};
+
+$("#importar").onclick = ()=> $("#archivo").click();
+
+$("#archivo").onchange = async ev=>{
+  const archivo = ev.target.files && ev.target.files[0];
+  ev.target.value = "";               // permite reimportar el mismo archivo
+  if (!archivo) return;
+  let datos;
+  try{
+    datos = JSON.parse(await archivo.text());
+  }catch(e){
+    avisoRespaldo("Ese archivo no se pudo leer. ¿Es el JSON que descargaste?", true);
+    return;
+  }
+  if (!datos || datos.app !== "calibracion" || !datos.estado){
+    avisoRespaldo("Ese archivo no es un respaldo de Calibración.", true);
+    return;
+  }
+  if (!confirm("Esto combina el respaldo con lo que ya tienes en este dispositivo. Nada se borra. ¿Seguir?")) return;
+
+  const antes = resumenEstado(E);
+  E = combinarEstados(E, sanearEstado(datos.estado));
+  await guardar();
+  pinta();
+  const despues = resumenEstado(E);
+  avisoRespaldo(
+    `Combinado: ${despues.enunciados - antes.enunciados} enunciados nuevos, ` +
+    `${despues.dias - antes.dias} días nuevos.`,
+    false
+  );
+};
+
+const resumenEstado = s => ({
+  dias: Object.keys(s.dias || {}).length,
+  enunciados: Object.values(s.enunciados || {}).reduce((n, l) => n + (l ? l.length : 0), 0)
+});
+
+/* El archivo lo escribe el usuario, así que nada se cree tal cual. */
+function sanearEstado(x){
+  const s = vacio();
+  if (!x || typeof x !== "object") return s;
+  if (x.inicio && typeof x.inicio === "string") s.inicio = x.inicio;
+  if (x.dias && typeof x.dias === "object"){
+    for (const [k, v] of Object.entries(x.dias)){
+      const w = Number(v);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && Number.isInteger(w) && w >= 1 && w <= 8) s.dias[k] = w;
+    }
+  }
+  for (let w = 1; w <= 8; w++){
+    const t = x.diario && x.diario[w];
+    if (typeof t === "string" && t) s.diario[w] = t;
+    const l = x.enunciados && x.enunciados[w];
+    if (Array.isArray(l)){
+      s.enunciados[w] = l.map(e=>{
+        if (!e || typeof e !== "object") return null;
+        return {
+          id: (typeof e.id === "string" && e.id) ? e.id : idNuevo(),
+          texto: typeof e.texto === "string" ? e.texto : "",
+          estado: ESTADOS.includes(e.estado) ? e.estado : "sin_marcar"
+        };
+      }).filter(Boolean);
+    }
+  }
+  return s;
+}
+
+/**
+ * Une por id. Si un id existe de los dos lados gana el que tenga
+ * estado distinto de "sin_marcar"; si los dos están marcados y no
+ * coinciden, se queda el de este dispositivo.
+ */
+function combinarListas(local, entra){
+  const orden = [];
+  const mapa = new Map();
+  (local || []).forEach(e=>{ mapa.set(e.id, e); orden.push(e.id); });
+  (entra || []).forEach(e=>{
+    if (!mapa.has(e.id)){ mapa.set(e.id, e); orden.push(e.id); return; }
+    const mio = mapa.get(e.id);
+    if (mio.estado === "sin_marcar" && e.estado !== "sin_marcar") mapa.set(e.id, e);
+  });
+  return orden.map(id => mapa.get(id));
+}
+
+function combinarEstados(local, entra){
+  const r = vacio();
+  r.semana = local.semana || 1;
+  r.inicio = [local.inicio, entra.inicio].filter(Boolean).sort()[0] || null;
+  // Un día marcado en cualquiera de los dos cuenta; si chocan, gana el local.
+  r.dias = Object.assign({}, entra.dias, local.dias);
+  for (let w = 1; w <= 8; w++){
+    const a = local.diario[w] || "";
+    const b = entra.diario[w] || "";
+    const texto = b.length > a.length ? b : a;   // se queda el más largo: pierde menos
+    if (texto) r.diario[w] = texto;
+    if (local.enunciados[w] || entra.enunciados[w]){
+      r.enunciados[w] = combinarListas(local.enunciados[w], entra.enunciados[w]);
+    }
+  }
+  return r;
+}
 
 /* ============================================================
    ARRANQUE
@@ -789,6 +1181,11 @@ $("#reiniciar").onclick = async ()=>{
 (async ()=>{
   const g = await leer();
   if (g) E = Object.assign(E, g);
+  if (!E.enunciados || typeof E.enunciados !== "object") E.enunciados = {};
+  // Parte el textarea viejo en enunciados donde haga falta. E.diario se conserva.
+  let migro = false;
+  for (let w = 1; w <= 8; w++){ if (migrarEnunciados(w)) migro = true; }
+  if (migro) await guardar();
   // abre en la semana con trabajo pendiente
   const ult = Object.values(E.dias).sort((a,b)=>b-a)[0] || 1;
   viendo = diasDe(ult) >= 7 && ult < 8 ? ult+1 : ult;

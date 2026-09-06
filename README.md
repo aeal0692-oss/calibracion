@@ -30,6 +30,13 @@ Consecuencias prácticas:
 - Si borras datos del sitio, desinstalas la app o usas modo incógnito, se pierde.
 - El texto de tu diario nunca sale del teléfono.
 
+Para eso está **«Descargar respaldo»** abajo: baja todo en un `.json`. **«Restaurar
+respaldo»** lo vuelve a meter, y **combina en vez de reemplazar** — nada se borra. Los
+enunciados se unen por `id`; si el mismo `id` existe de los dos lados gana el que esté
+marcado, y si los dos están marcados distinto se queda el de este dispositivo. Los días
+se suman, y de cada textarea se conserva la versión más larga. Es la forma de pasar el
+avance de la compu al teléfono sin perder nada.
+
 La única excepción es el revisor: si lo activas y presionas el botón, ese texto se manda
 al proxy para que lo lea el modelo. Nada se guarda del otro lado, pero sale del teléfono.
 Si no configuras el revisor, esta excepción no existe.
@@ -52,6 +59,27 @@ Cada entrada tiene `titulo`, `premisa`, `concepto[]`, `escrito{}`, `accion` y `g
 
 Después de publicar un cambio, la app instalada puede tardar una carga en actualizarse;
 si no aparece, súbele la versión al `CACHE` en `sw.js`.
+
+### Dos formatos de ejercicio escrito
+
+`escrito.formato` decide cómo se captura la semana:
+
+| Valor | Qué muestra | Cómo se guarda |
+|---|---|---|
+| `"texto"` | Un textarea libre | `E.diario[semana]` |
+| `"lista"` | Enunciados en filas, con estado | `E.enunciados[semana]` |
+
+Hoy solo la semana 1 usa `"lista"`. Para pasar otra semana al formato de lista, cambia
+su bandera y ya: la lógica es la misma para todas. En formato de lista cada enunciado es
+`{ id, texto, estado }` con estado `"sin_marcar" | "heredado" | "comprobado"`.
+
+**Migración automática.** La primera vez que una semana pasa a `"lista"`, si ya había
+texto en su textarea se parte por saltos de línea y cada línea se vuelve un enunciado
+`sin_marcar`. `E.diario` **no se borra**: queda como respaldo por si la partición sale
+mal, y solo se vuelve a usar si borras `E.enunciados[semana]` de raíz.
+
+El revisor recibe lo mismo en los dos formatos: los textos concatenados con saltos de
+línea. El estado es del usuario y nunca sale del dispositivo.
 
 ## Revisor (opcional)
 
