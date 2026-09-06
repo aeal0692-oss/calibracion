@@ -172,6 +172,25 @@ textarea::placeholder{color:#6C7C8C}
   *{transition:none!important}
 }
 
+/* ---------- revisión (bloque opcional) ---------- */
+.revision{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.15rem 1.2rem;margin-top:1.2rem;
+}
+.revision-cab{display:flex;align-items:baseline;justify-content:space-between;gap:1rem}
+.revision h4{font-family:var(--sans);font-size:1rem;font-weight:600;color:var(--steady);margin:0}
+.revision.falla h4{color:var(--signal)}
+.revision-x{
+  background:none;border:0;padding:0;color:var(--ink-dim);
+  font-family:var(--sans);font-size:.84rem;text-decoration:underline;flex:none;
+}
+.revision-x:hover{color:var(--ink)}
+.card .revision p{margin:.75rem 0 0;font-size:.98rem}
+.card .revision .revision-pie{
+  color:var(--ink-dim);font-size:.86rem;
+  margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--line);
+}
+
 /* ---------- nota ---------- */
 .nota{
   font-size:.92rem;color:var(--ink-dim);margin:2.5rem 0 0;
@@ -229,6 +248,15 @@ footer button:hover{color:var(--ink-dim)}
 </section>
 
 <script>
+/* ============================================================
+   REVISOR — opcional
+   URL del proxy que guarda la llave de la API (ver README > Revisor).
+   Vacía, o si el proxy no contesta, el botón no aparece y la app
+   funciona exactamente igual. La revisión nunca es bloqueante.
+   ============================================================ */
+const REVISOR_URL = "";
+const MIN_REVISION = 40;
+
 /* ============================================================
    CONTENIDO — 8 semanas
    ============================================================ */
@@ -516,6 +544,7 @@ function pinta(){
       <p>${s.escrito.instruccion}</p>
       <textarea id="diario" placeholder="${s.escrito.placeholder}">${texto}</textarea>
       <div class="saved" id="aviso">Guardado</div>
+      <div class="row" id="filaRevisar"></div>
     </div>
 
     <div class="block accion">
@@ -542,10 +571,137 @@ function pinta(){
     guardarPronto();
     const a = $("#aviso"); a.classList.add("on");
     clearTimeout(a._t); a._t = setTimeout(()=>a.classList.remove("on"), 1400);
+    ajustarBotonRevisar();
   });
   document.querySelectorAll("[data-ir]").forEach(b=>{
     b.onclick = ()=>{ viendo = +b.dataset.ir; pinta(); window.scrollTo({top:0,behavior:"smooth"}); };
   });
+  montarRevisor();
+}
+
+/* ============================================================
+   REVISOR
+   Aditivo: si el proxy no está configurado o no contesta, nada
+   de esto se monta y la app se comporta igual que sin revisor.
+   La revisión no se guarda en localStorage.
+   ============================================================ */
+let revisorListo = false;
+
+async function probarRevisor(){
+  if (!REVISOR_URL) return false;
+  try{
+    const corte = new AbortController();
+    const t = setTimeout(()=>corte.abort(), 6000);
+    const r = await fetch(REVISOR_URL, { method:"GET", signal:corte.signal });
+    clearTimeout(t);
+    if (!r.ok) return false;
+    const j = await r.json();
+    return j && j.ok === true;
+  }catch(e){ return false; }
+}
+
+function montarRevisor(){
+  const fila = $("#filaRevisar");
+  if (!fila || !revisorListo) return;
+  fila.innerHTML = `<button class="btn ghost" id="revisar">Revisar lo que escribí</button>`;
+  $("#revisar").onclick = pedirRevision;
+  ajustarBotonRevisar();
+}
+
+function ajustarBotonRevisar(){
+  const b = $("#revisar");
+  if (!b || b.dataset.cargando) return;
+  b.disabled = $("#diario").value.trim().length < MIN_REVISION;
+}
+
+function cerrarRevision(){
+  const v = $("#revision");
+  if (v) v.remove();
+}
+
+function mensajeDeError(codigo){
+  if (codigo === 413) return "El texto es muy largo para revisar. Recórtalo un poco y vuelve a intentar. Tu texto está guardado.";
+  if (codigo === 429) return "El revisor está saturado ahorita. Intenta en un minuto. Tu texto está guardado.";
+  if (codigo === 503) return "El revisor no está configurado del lado del servidor. Tu texto está guardado.";
+  if (codigo >= 500) return "El revisor falló de su lado. Intenta otra vez. Tu texto está guardado.";
+  return `El revisor rechazó la petición (código ${codigo}). Tu texto está guardado.`;
+}
+
+// El texto viene del modelo: se pinta como texto, nunca como HTML.
+function mostrarRevision(revision, error){
+  cerrarRevision();
+  const caja = document.createElement("div");
+  caja.id = "revision";
+  caja.className = error ? "revision falla" : "revision";
+
+  const cab = document.createElement("div");
+  cab.className = "revision-cab";
+  const titulo = document.createElement("h4");
+  titulo.textContent = error ? "No se pudo revisar" : "Revisión";
+  const cerrar = document.createElement("button");
+  cerrar.type = "button";
+  cerrar.className = "revision-x";
+  cerrar.setAttribute("aria-label", "Cerrar la revisión");
+  cerrar.textContent = "Cerrar";
+  cerrar.onclick = cerrarRevision;
+  cab.append(titulo, cerrar);
+  caja.append(cab);
+
+  (error || revision).split("\n").forEach(linea=>{
+    const l = linea.trim();
+    if (!l) return;
+    const p = document.createElement("p");
+    p.textContent = l;
+    caja.append(p);
+  });
+
+  if (!error){
+    const pie = document.createElement("p");
+    pie.className = "revision-pie";
+    pie.textContent = "Esto no se guarda: es una lectura de cómo están planteados tus enunciados, no un diagnóstico.";
+    caja.append(pie);
+  }
+
+  $("#filaRevisar").insertAdjacentElement("afterend", caja);
+  caja.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+async function pedirRevision(){
+  const b = $("#revisar");
+  const ta = $("#diario");
+  const texto = ta.value.trim();
+  if (texto.length < MIN_REVISION) return;
+
+  cerrarRevision();
+  b.dataset.cargando = "1";
+  b.disabled = true;
+  const etiqueta = b.textContent;
+  b.textContent = "Revisando…";
+
+  try{
+    const corte = new AbortController();
+    const t = setTimeout(()=>corte.abort(), 60000);
+    const r = await fetch(REVISOR_URL, {
+      method:"POST",
+      headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ semana: viendo, texto }),
+      signal: corte.signal
+    });
+    clearTimeout(t);
+    if (!r.ok){
+      mostrarRevision(null, mensajeDeError(r.status));
+    } else {
+      const j = await r.json();
+      if (j && j.revision) mostrarRevision(j.revision, null);
+      else mostrarRevision(null, "El revisor respondió vacío. Intenta otra vez. Tu texto está guardado.");
+    }
+  }catch(e){
+    mostrarRevision(null, "No se pudo conectar. Tu texto está guardado.");
+  }finally{
+    delete b.dataset.cargando;
+    b.textContent = etiqueta;
+    ajustarBotonRevisar();
+  }
 }
 
 /* ============================================================
@@ -637,6 +793,9 @@ $("#reiniciar").onclick = async ()=>{
   const ult = Object.values(E.dias).sort((a,b)=>b-a)[0] || 1;
   viendo = diasDe(ult) >= 7 && ult < 8 ? ult+1 : ult;
   pinta();
+  // La sonda va después del primer pintado: si tarda o falla, no retrasa nada.
+  revisorListo = await probarRevisor();
+  montarRevisor();
 })();
 
 /* funciona sin internet una vez abierta */

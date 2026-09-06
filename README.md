@@ -30,6 +30,10 @@ Consecuencias prácticas:
 - Si borras datos del sitio, desinstalas la app o usas modo incógnito, se pierde.
 - El texto de tu diario nunca sale del teléfono.
 
+La única excepción es el revisor: si lo activas y presionas el botón, ese texto se manda
+al proxy para que lo lea el modelo. Nada se guarda del otro lado, pero sale del teléfono.
+Si no configuras el revisor, esta excepción no existe.
+
 ## Estructura
 
 | Archivo | Qué es |
@@ -38,6 +42,7 @@ Consecuencias prácticas:
 | `sw.js` | Service worker; permite abrirla sin señal |
 | `manifest.webmanifest` | Metadatos de instalación (nombre, iconos, color) |
 | `icons/` | Iconos de la app |
+| `proxy/` | Worker de Cloudflare que guarda la llave de la API (opcional) |
 
 ## Editar el contenido
 
@@ -48,6 +53,79 @@ Cada entrada tiene `titulo`, `premisa`, `concepto[]`, `escrito{}`, `accion` y `g
 Después de publicar un cambio, la app instalada puede tardar una carga en actualizarse;
 si no aparece, súbele la versión al `CACHE` en `sw.js`.
 
+## Revisor (opcional)
+
+Debajo del textarea puede aparecer un botón **«Revisar lo que escribí»**. Manda lo que
+escribiste a Claude y regresa una lectura de si tus enunciados están bien planteados
+según el criterio de esa semana.
+
+Es aditivo y nunca bloqueante: **si no lo configuras, el botón no existe y la app se
+comporta exactamente igual.** Si lo configuras y el proxy deja de responder, el botón
+también desaparece solo.
+
+### Por qué hace falta un proxy
+
+La llave de la API no puede vivir en `index.html`: es un archivo público, cualquiera
+puede leerla y gastarte el saldo. El proxy es un Cloudflare Worker que guarda la llave
+del lado del servidor, recibe `{semana, texto}` y devuelve `{revision}`.
+
+### Desplegarlo
+
+Necesitas una cuenta de Cloudflare (el plan gratis alcanza de sobra) y una llave de
+[console.anthropic.com](https://console.anthropic.com/settings/keys).
+
+```bash
+cd proxy
+npm install
+npx wrangler login
+npx wrangler secret put ANTHROPIC_API_KEY   # pega la llave cuando la pida
+npx wrangler deploy
+```
+
+`wrangler deploy` imprime la URL, algo como
+`https://calibracion-revisor.TU-SUBDOMINIO.workers.dev`.
+
+**La variable de entorno de la llave es `ANTHROPIC_API_KEY`, y se guarda como *secret*
+de Wrangler, no como `[vars]` ni en ningún archivo del repo.** `wrangler secret put` la
+sube cifrada a Cloudflare; nunca queda en git.
+
+### Conectarlo
+
+Pon esa URL en la constante al principio del `<script>` de `index.html`:
+
+```js
+const REVISOR_URL = "https://calibracion-revisor.TU-SUBDOMINIO.workers.dev/";
+```
+
+Haz commit, sube, y súbele la versión al `CACHE` en `sw.js` para que los teléfonos con
+la app instalada agarren el cambio.
+
+### Redactar el criterio de cada semana
+
+El prompt del revisor vive en `proxy/src/index.ts`, no en el cliente — el cliente solo
+manda el número de semana. El criterio por semana está en el objeto `CRITERIOS`:
+
+- La **semana 1** ya está redactada (forma «no puedo hacer X», y las fallas NIEBLA,
+  RASGO, HECHO, VAGO).
+- Las **semanas 2 a 8** traen un texto genérico a propósito, y el revisor abre diciendo
+  que el criterio de esa semana todavía no está calibrado.
+
+Para redactar una, reemplaza `criterioPendiente(N)` por el texto de esa semana y vuelve
+a hacer `npx wrangler deploy`. El cliente no se toca.
+
+### Ajustes y límites
+
+| Constante en `proxy/src/index.ts` | Valor |
+|---|---|
+| `MODELO` | `claude-sonnet-4-6` |
+| `MAX_TOKENS` | 1000 |
+| `MAX_CARACTERES` | 6000 (arriba de eso el proxy responde 413) |
+| `ORIGEN_APP` | `https://aeal0692-oss.github.io` — único origen con CORS |
+
+Nota sobre CORS: es una protección del navegador, no un candado. Alguien que conozca la
+URL del Worker puede llamarlo desde fuera de un navegador y gastarte saldo. Si eso llega
+a pasar, agrégale una regla de Rate Limiting en el panel de Cloudflare.
+
 ## Correr en local
 
 Necesita un servidor (el service worker no funciona con `file://`):
@@ -57,3 +135,14 @@ python -m http.server 8000
 ```
 
 Y abre `http://localhost:8000`.
+
+Para probar el revisor en local, corre el Worker aparte y deja que ese origen pase CORS:
+
+```bash
+# en proxy/, crea .dev.vars (está en .gitignore, nunca se sube)
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   ORIGENES_EXTRA=http://localhost:8000
+npx wrangler dev --port 8787
+```
+
+Y apunta `REVISOR_URL` a `http://127.0.0.1:8787/` mientras pruebas.

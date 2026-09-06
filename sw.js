@@ -2,8 +2,11 @@
    La app entera cabe en un HTML, así que la estrategia es simple:
    - navegación: red primero, caché si no hay señal
    - todo lo demás (iconos, tipografías): caché primero */
-const CACHE = "calibracion-v1";
+const CACHE = "calibracion-v2";
 const BASE = new URL("./", self.location).pathname;
+// Único origen externo que vale la pena cachear. Todo lo demás de afuera
+// —en particular el proxy del revisor— va directo a la red, sin tocar caché.
+const EXTERNOS_CACHEABLES = ["fonts.googleapis.com", "fonts.gstatic.com"];
 const ESENCIALES = [
   BASE,
   BASE + "index.html",
@@ -31,6 +34,10 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+  const propio = url.origin === self.location.origin;
+  if (!propio && !EXTERNOS_CACHEABLES.includes(url.hostname)) return;
 
   if (req.mode === "navigate"){
     e.respondWith(

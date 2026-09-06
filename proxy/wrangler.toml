@@ -1,0 +1,14 @@
+name = "calibracion-revisor"
+main = "src/index.ts"
+compatibility_date = "2026-09-05"
+compatibility_flags = ["nodejs_compat"]
+
+# La llave NO va aquí. Se guarda como secreto:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#
+# Para desarrollo local, descomenta esto y sirve el index.html en ese puerto.
+# Déjalo comentado en producción: sin esta variable el único origen con CORS
+# es https://aeal0692-oss.github.io
+#
+# [vars]
+# ORIGENES_EXTRA = "http://localhost:8000"
