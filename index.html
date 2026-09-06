@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calibración — ocho semanas sobre autoimagen</title>
+<meta name="description" content="Programa de ocho semanas sobre autoimagen, con práctica diaria de 12 minutos.">
+<meta name="theme-color" content="#141C24">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calibración">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#141C24;
+  --panel:#1C2833;
+  --panel-2:#243342;
+  --line:#33465A;
+  --ink:#E9E7E1;
+  --ink-dim:#9DAAB8;
+  --signal:#E3A03C;
+  --steady:#7FB0A6;
+  --radius:3px;
+  --sans:"IBM Plex Sans Condensed",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--serif);
+  font-size:17px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:4rem;
+}
+.wrap{max-width:38rem;margin:0 auto;padding:0 1.25rem}
+h1,h2,h3,.sans{font-family:var(--sans);font-weight:600;letter-spacing:.005em}
+button{font-family:var(--sans);cursor:pointer}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+
+/* ---------- encabezado ---------- */
+header{padding:2.75rem 0 1.5rem}
+.brand{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+h1{font-size:1.6rem;margin:0;line-height:1.1}
+.brand span{font-family:var(--sans);font-size:.9rem;color:var(--ink-dim);font-weight:400}
+.premise{
+  font-size:1.02rem;color:var(--ink-dim);margin:.9rem 0 0;max-width:32rem;
+  border-left:2px solid var(--line);padding-left:1rem;
+}
+
+/* ---------- riel de semanas ---------- */
+.rail{margin:2.25rem 0 1rem;position:relative}
+.rail-line{position:absolute;left:0;right:0;top:13px;height:1px;background:var(--line)}
+.ticks{display:flex;justify-content:space-between;position:relative}
+.tick{
+  background:none;border:0;padding:0;display:flex;flex-direction:column;
+  align-items:center;gap:.45rem;width:2.2rem;color:var(--ink-dim);
+}
+.dot{
+  width:11px;height:11px;border-radius:50%;background:var(--ground);
+  border:1px solid var(--line);margin-top:8px;transition:transform .18s ease;
+}
+.tick[data-state="hecha"] .dot{background:var(--steady);border-color:var(--steady)}
+.tick[data-state="actual"] .dot{
+  background:var(--signal);border-color:var(--signal);
+  box-shadow:0 0 0 4px rgba(227,160,60,.16);
+}
+.tick .n{font-family:var(--sans);font-size:.82rem}
+.tick[data-state="actual"] .n{color:var(--signal)}
+.tick[data-state="hecha"] .n{color:var(--steady)}
+.tick:hover .dot{transform:scale(1.25)}
+
+/* ---------- panel principal ---------- */
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.5rem 1.35rem;margin:1.25rem 0;
+}
+.card h2{font-size:1.3rem;margin:0 0 .2rem;line-height:1.2}
+.eyebrow{font-family:var(--sans);font-size:.86rem;color:var(--ink-dim);margin:0 0 .55rem}
+.card p{margin:.85rem 0}
+.card p:first-of-type{margin-top:.9rem}
+
+.lead{font-size:1.06rem}
+.block{margin:1.9rem 0 0;padding-top:1.4rem;border-top:1px solid var(--line)}
+.block h3{font-size:1.05rem;margin:0 0 .5rem;color:var(--signal);font-weight:500}
+.block.accion h3{color:var(--steady)}
+ol.pasos{margin:.7rem 0 0;padding-left:1.15rem}
+ol.pasos li{margin:.5rem 0;padding-left:.2rem}
+
+textarea{
+  width:100%;min-height:9rem;margin-top:.8rem;padding:.85rem;
+  background:var(--ground);color:var(--ink);border:1px solid var(--line);
+  border-radius:var(--radius);font-family:var(--serif);font-size:.98rem;
+  line-height:1.6;resize:vertical;
+}
+textarea::placeholder{color:#6C7C8C}
+.saved{font-family:var(--sans);font-size:.82rem;color:var(--steady);height:1.1rem;margin-top:.4rem;opacity:0;transition:opacity .25s}
+.saved.on{opacity:1}
+
+/* ---------- botones ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  background:var(--signal);color:#14202B;border:0;border-radius:var(--radius);
+  padding:.8rem 1.3rem;font-size:1rem;font-weight:600;
+}
+.btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:none;color:var(--ink-dim);border:1px solid var(--line);font-weight:500}
+.btn.ghost:hover{color:var(--ink);border-color:var(--ink-dim);filter:none}
+.btn.full{width:100%}
+.btn:disabled{background:var(--panel-2);color:var(--ink-dim);cursor:default}
+.row{display:flex;gap:.65rem;flex-wrap:wrap;margin-top:1.5rem}
+
+/* ---------- marcador ---------- */
+.meter{display:flex;gap:2rem;margin-top:1.6rem;padding-top:1.3rem;border-top:1px solid var(--line)}
+.meter div{font-family:var(--sans)}
+.meter b{display:block;font-size:1.75rem;font-weight:500;color:var(--signal);line-height:1}
+.meter small{font-size:.85rem;color:var(--ink-dim)}
+.dias{display:flex;gap:.4rem;margin-top:1.1rem;flex-wrap:wrap}
+.dia{
+  width:2.05rem;height:2.05rem;border-radius:var(--radius);border:1px solid var(--line);
+  background:var(--ground);color:var(--ink-dim);font-family:var(--sans);font-size:.82rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.dia.on{background:var(--steady);border-color:var(--steady);color:#14202B}
+
+/* ---------- sesión ---------- */
+#sesion{
+  position:fixed;inset:0;background:var(--ground);z-index:50;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:2rem 1.5rem;text-align:center;
+}
+#sesion.on{display:flex}
+.pacer{width:210px;height:210px;position:relative;display:grid;place-items:center;margin-bottom:2rem}
+.halo{
+  position:absolute;inset:0;border-radius:50%;border:1px solid var(--line);
+}
+.orbe{
+  width:76px;height:76px;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%, #F0BC6C, var(--signal) 62%, #B87C24);
+  animation:respira 10s ease-in-out infinite;
+}
+@keyframes respira{
+  0%{transform:scale(.62)}
+  40%{transform:scale(1.68)}
+  100%{transform:scale(.62)}
+}
+.cue{
+  position:absolute;bottom:-.2rem;font-family:var(--sans);font-size:.9rem;color:var(--ink-dim);
+  animation:cambia 10s steps(1,end) infinite;
+}
+@keyframes cambia{0%,39.9%{content:""}}
+.guion{
+  font-size:1.22rem;line-height:1.55;max-width:24rem;min-height:6.5rem;
+  transition:opacity .6s ease;
+}
+.guion.fade{opacity:0}
+.reloj{font-family:var(--sans);font-size:.95rem;color:var(--ink-dim);margin-top:2rem;letter-spacing:.04em}
+.barra{width:min(22rem,80vw);height:2px;background:var(--line);margin-top:.7rem;position:relative}
+.barra i{position:absolute;left:0;top:0;bottom:0;background:var(--signal);width:0}
+#sesion .row{justify-content:center}
+
+@media (prefers-reduced-motion:reduce){
+  .orbe{animation:none;transform:scale(1.1)}
+  *{transition:none!important}
+}
+
+/* ---------- nota ---------- */
+.nota{
+  font-size:.92rem;color:var(--ink-dim);margin:2.5rem 0 0;
+  padding:1.1rem 1.2rem;border:1px dashed var(--line);border-radius:var(--radius);
+}
+.nota p{margin:.5rem 0}
+.nota p:first-child{margin-top:0}
+.nota p:last-child{margin-bottom:0}
+footer{margin-top:2.5rem;font-family:var(--sans);font-size:.85rem;color:#6C7C8C}
+footer button{background:none;border:0;color:#6C7C8C;text-decoration:underline;padding:0;font-size:.85rem}
+footer button:hover{color:var(--ink-dim)}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <header>
+    <div class="brand">
+      <h1>Calibración</h1>
+      <span>ocho semanas sobre autoimagen</span>
+    </div>
+    <p class="premise">Un sistema con la referencia mal puesta no llega a su destino aunque el motor esté perfecto. Esto es sobre mover la referencia.</p>
+
+    <nav class="rail" aria-label="Semanas del programa">
+      <div class="rail-line"></div>
+      <div class="ticks" id="riel"></div>
+    </nav>
+  </header>
+
+  <main id="vista"></main>
+
+  <div class="nota">
+    <p>Esto es material de trabajo personal, no terapia. Está construido sobre <i>Psycho-Cybernetics</i> de Maxwell Maltz (1960) más investigación posterior en ensayo mental, efecto reflector y autocompasión.</p>
+    <p>Si lo que aparece al abrir es más pesado que un problema de confianza —algo que no te deja funcionar, o que duele de más— eso se trabaja acompañado, con un profesional. No es un plan B.</p>
+  </div>
+
+  <footer>
+    <button id="reiniciar">Borrar todo y empezar de nuevo</button>
+  </footer>
+</div>
+
+<section id="sesion" aria-live="polite">
+  <div class="pacer">
+    <div class="halo"></div>
+    <div class="orbe"></div>
+    <div class="cue" id="cue">inhala</div>
+  </div>
+  <p class="guion" id="guion"></p>
+  <div class="reloj" id="reloj">12:00</div>
+  <div class="barra"><i id="barra"></i></div>
+  <div class="row">
+    <button class="btn ghost" id="salir">Salir</button>
+    <button class="btn" id="terminar" disabled>Marcar el día</button>
+  </div>
+</section>
+
+<script>
+/* ============================================================
+   CONTENIDO — 8 semanas
+   ============================================================ */
+const SEMANAS = [
+{
+  n:1, titulo:"Inventario",
+  premisa:"Ver qué imagen está instalada antes de tocarla.",
+  concepto:[
+    "Maxwell Maltz era cirujano plástico. Corregía narices, cicatrices, orejas. Y notó algo que lo desconcertó: una parte de sus pacientes salía del quirófano con una cara nueva y seguía sintiéndose exactamente igual de fea. La operación había funcionado. La persona no había cambiado.",
+    "Su conclusión fue que todos cargamos una imagen interna de quiénes somos, y que actuamos en un rango consistente con esa imagen, no con nuestra capacidad real. La imagen se comporta como una referencia: el sistema se corrige para volver a ella. Por eso el que se siente mediocre sabotea el buen momento, y el que se siente impostor deja pasar el ascenso.",
+    "Esta semana no cambias nada. Solo mides dónde está la referencia. Los cambios que se hacen sin medir primero se caen en tres semanas."
+  ],
+  escrito:{
+    titulo:"Los diez enunciados",
+    instruccion:"Completa diez veces la frase «Yo soy alguien que no puede…». Sin filtrar, sin editar. Cuando tengas los diez, vuelve y marca cuáles has comprobado de verdad y cuáles nada más heredaste.",
+    placeholder:"Yo soy alguien que no puede…"
+  },
+  accion:"Ninguna. Esta semana solo observas. Cada vez que te frenes, anota la escena en dos líneas: qué ibas a hacer y qué frase apareció justo antes de no hacerlo.",
+  guion:[
+    "Deja la respiración corriendo. Nada más síguela un rato.",
+    "Trae una escena reciente donde te frenaste. Una específica, no una categoría.",
+    "Vuelve al segundo exacto en que decidiste no hacerlo. Qué pasó en el cuerpo.",
+    "Qué frase estaba ahí. Escúchala completa, con su tono.",
+    "No la discutas. Solo reconoce de quién es esa voz.",
+    "Suéltala. Respira tres veces más y regresa."
+  ]
+},
+{
+  n:2, titulo:"Hecho contra veredicto",
+  premisa:"Separar lo que pasó de lo que concluiste.",
+  concepto:[
+    "Tu autoimagen no se construyó con datos. Se construyó con las conclusiones que sacaste de esos datos, casi siempre siendo niño y sin ninguna herramienta para sacarlas bien.",
+    "Un maestro se rió de tu dibujo: ese es el hecho. «No sirvo para lo creativo»: ese es el veredicto. El sistema archivó el veredicto y tiró el hecho. Y luego operó treinta años con un archivo que nadie volvió a revisar.",
+    "Lo que hace esta semana es abrir el archivo. No para negar lo que pasó, sino para notar que la conclusión era una de varias posibles, y que la eligió alguien que no tenía tu criterio de hoy."
+  ],
+  escrito:{
+    titulo:"Tres columnas",
+    instruccion:"Toma tres de los enunciados de la semana pasada. Para cada uno escribe: qué pasó exactamente, qué concluiste, y qué otra lectura cabía con la misma evidencia.",
+    placeholder:"Qué pasó:\nQué concluí:\nQué otra lectura cabe:"
+  },
+  accion:"Elige un veredicto viejo y ponlo a prueba en pequeño esta semana. Si el archivo dice «no sirvo para hablar en público», di algo en una junta. Un dato nuevo pesa más que un argumento.",
+  guion:[
+    "Respira hasta que el cuerpo baje un escalón.",
+    "Trae uno de los tres veredictos que escribiste.",
+    "Ponlo enfrente y míralo como lo que es: una frase que alguien redactó.",
+    "Ahora trae la escena de la que salió. Ve a la persona que la vivió.",
+    "Dile lo que hoy sabes que ella no sabía.",
+    "Deja la escena donde está. Vuelve a la respiración."
+  ]
+},
+{
+  n:3, titulo:"El teatro de la mente",
+  premisa:"Entrenar la ejecución antes de que exista la escena.",
+  concepto:[
+    "Esta es la técnica central de Maltz y la parte con más respaldo posterior. El sistema nervioso responde de forma parecida a una experiencia vívidamente imaginada y a una real: se activan circuitos motores parecidos, y por eso el ensayo mental mejora el rendimiento medible en deporte y en música.",
+    "Ojo con la confusión importante: esto no es manifestar ni pedirle al universo. Es entrenamiento. Un pianista que repasa la pieza en la cabeza no está atrayendo el concierto, está practicando sin piano. Tú vas a practicar sin la escena.",
+    "Esta semana eliges una sola escena y la vas a ensayar las cinco semanas que quedan. Una. La que más se te atore."
+  ],
+  escrito:{
+    titulo:"La escena",
+    instruccion:"Describe una escena específica que hoy no puedes ejecutar bien. Con lugar, personas, hora. No «tener más seguridad», sino «mostrar lo que construí a alguien que respeto, sin adelantarme a disculparme».",
+    placeholder:"Dónde estoy, quién está, qué hago exactamente…"
+  },
+  accion:"Escribe la escena en presente, en primera persona, en no más de ocho renglones. Es el guion que vas a usar cada día hasta la semana 8.",
+  guion:[
+    "Baja el pulso primero. Sin eso el ensayo no agarra.",
+    "Entra a tu escena. Empieza por lo que ves desde donde estás parado.",
+    "Agrega sonido. Y luego la temperatura del lugar.",
+    "Ahora ejecútala. Despacio, completa, desde adentro de tus ojos.",
+    "Si aparece el nudo, no cortes. Sigue la escena con el nudo puesto.",
+    "Repítela una vez más, un poco mejor.",
+    "Guárdala. Mañana la vuelves a correr."
+  ]
+},
+{
+  n:4, titulo:"El reflector",
+  premisa:"Medir de verdad cuánto te está mirando la gente.",
+  concepto:[
+    "Hay un experimento clásico de Thomas Gilovich: hicieron entrar a estudiantes a un salón con una playera vergonzosa. Los que la traían calcularon que casi la mitad del salón la había notado. La proporción real fue como un cuarto de eso.",
+    "Le llamaron efecto reflector. Sobreestimamos sistemáticamente cuánto nos observan, cuánto registran nuestros errores y cuánto tiempo los recuerdan. La razón es simple: tú eres el centro de tu atención todo el día, y proyectas ese foco hacia afuera. Los demás están ocupados siendo el centro de la suya.",
+    "El «qué dirán» casi nunca es un público. Suele ser dos o tres personas concretas, y con frecuencia ya ni siquiera están cerca."
+  ],
+  escrito:{
+    titulo:"La lista de nombres",
+    instruccion:"Escribe los nombres de quienes realmente temes que te vean fallar. Nombres propios, no «la gente». Al lado de cada uno anota cuándo hablaste con esa persona por última vez.",
+    placeholder:"Nombre — última vez que hablamos:"
+  },
+  accion:"Una exposición chica. Di en voz alta algo tuyo a una persona de esa lista, o publica algo mínimo. La meta no es que salga bien: es recolectar el dato de lo que de verdad pasa después.",
+  guion:[
+    "Respira. Deja que el cuerpo se asiente.",
+    "Trae a la persona cuyo juicio más pesa.",
+    "Míralo haciendo lo suyo: su trabajo, sus pendientes, sus propios miedos.",
+    "Nota cuánto de su día ocupas realmente.",
+    "Ahora corre tu escena de la semana 3, con esa persona presente.",
+    "Termínala igual. Vuelve a la respiración."
+  ]
+},
+{
+  n:5, titulo:"El error como dato",
+  premisa:"Recuperar la señal que te permite corregir.",
+  concepto:[
+    "Aquí está el corazón cibernético del asunto. Un torpedo autoguiado no viaja recto hacia el blanco. Se sale, detecta que se salió, corrige, se vuelve a salir, corrige otra vez. Llega precisamente porque comete errores y los registra.",
+    "El error no es lo contrario del acierto: es el único mecanismo que hay para llegar. Un sistema que no puede detectar desviación no puede corregirla.",
+    "Por eso la autoflagelación es tan cara. No es que sea desagradable, es que rompe el circuito: duele tanto mirar el error que aprendes a no mirarlo, y sin señal el sistema queda volando a ciegas. La disciplina real no es castigarse más fuerte. Es poder ver el desvío sin apagar el sensor."
+  ],
+  escrito:{
+    titulo:"Tres desvíos",
+    instruccion:"Toma tres cosas que registras como fracasos. Escribe qué corrección concreta contenía cada una, y si la aplicaste o la enterraste junto con el episodio.",
+    placeholder:"Qué pasó — qué corrección traía — la usé o no:"
+  },
+  accion:"Haz algo con alta probabilidad de salir mediocre, a propósito, y termínalo. Un borrador feo, una versión 0.1. El objetivo es demostrarle al sistema que sobrevives a hacerlo mal.",
+  guion:[
+    "Respira. Deja bajar la guardia un poco.",
+    "Trae un error tuyo reciente. Uno que todavía punce.",
+    "Míralo sin el veredicto encima. Solo el hecho: aquí se desvió.",
+    "Pregúntale qué corrección traía. Espera la respuesta, no la fabriques.",
+    "Corre tu escena de la semana 3 aplicando esa corrección.",
+    "Suelta y regresa."
+  ]
+},
+{
+  n:6, titulo:"Trato interno",
+  premisa:"Cambiar el tono con el que te hablas cuando fallas.",
+  concepto:[
+    "Existe una creencia muy arraigada de que ser duro contigo mismo te mantiene rindiendo, y que aflojar el tono es volverse conformista. La investigación de Kristin Neff y otros apunta al revés: la gente que se trata con más amabilidad tiende a recuperarse más rápido de los fracasos y a persistir más, no menos.",
+    "El mecanismo tiene sentido con lo de la semana pasada. El trato duro convierte cada error en una amenaza a tu valor, y frente a una amenaza el sistema se defiende: evita, minimiza, deja de mirar. El trato amable mantiene el error a la vista, que es donde sirve.",
+    "Amabilidad no es indulgencia. Un buen entrenador te dice exactamente qué hiciste mal y no te dice que eres un inútil. Esas dos cosas son separables, y separarlas es el trabajo de esta semana."
+  ],
+  escrito:{
+    titulo:"La carta del amigo",
+    instruccion:"Escribe lo que le dirías a un amigo que llega con tu situación exacta y tu historial exacto. Con su nombre. Léela después y nota la distancia entre ese tono y el tuyo.",
+    placeholder:"Oye,…"
+  },
+  accion:"Tres veces al día, cacha la frase con la que te hablas y vuélvela a decir como se la dirías a esa persona. No la borres: tradúcela.",
+  guion:[
+    "Respira. Sin apurar la exhalación.",
+    "Trae el momento más reciente en que te hablaste feo.",
+    "Escucha la frase tal cual salió, con su tono completo.",
+    "Ahora ponle enfrente a alguien que quieres y dísela a él. Nota si puedes.",
+    "Vuelve a decírtela a ti, con el tono que usarías con él.",
+    "Quédate un momento con esa versión. Luego suelta."
+  ]
+},
+{
+  n:7, titulo:"Salir",
+  premisa:"Publicar la cosa. Esta semana se ejecuta.",
+  concepto:[
+    "La secuencia que casi todos asumen es: primero me arreglo por dentro, luego actúo. En la práctica funciona en el otro orden. La imagen cambia cuando le llega evidencia nueva, y la evidencia nueva solo la produce la conducta. Sin acto no hay dato, y sin dato la referencia se queda donde estaba.",
+    "Las seis semanas anteriores no eran preparación para sentirte listo. Eran para que cuando lo hagas sin sentirte listo, el sistema pueda registrar el resultado en vez de descartarlo.",
+    "Así que esta semana sale algo tuyo al mundo. Con fecha y hora, no «pronto»."
+  ],
+  escrito:{
+    titulo:"El mínimo publicable",
+    instruccion:"Define la versión más chica de tu cosa que ya puede existir afuera. Qué es, quién la va a ver, y el día y la hora exactos en que sale.",
+    placeholder:"Qué sale:\nQuién lo ve:\nDía y hora:"
+  },
+  accion:"Publicar. En la fecha que escribiste. Después anota qué pasó de verdad, no lo que temías: quién dijo qué, cuánto duró, qué se cayó y qué no.",
+  guion:[
+    "Respira hasta que baje.",
+    "Ponte en el momento inmediatamente después de haberlo publicado. Ya está afuera.",
+    "Quédate ahí. Nota lo que hay en el cuerpo, sin arreglarlo.",
+    "Ahora avanza tres días en esa línea. Qué queda del susto.",
+    "Regresa al momento de mandarlo y hazlo una vez más.",
+    "Abre los ojos cuando la escena esté completa."
+  ]
+},
+{
+  n:8, titulo:"Sostener",
+  premisa:"Preparar la recaída antes de que llegue.",
+  concepto:[
+    "La imagen vieja no se borra. Pierde autoridad, que es distinto. Va a volver a hablar en la próxima temporada difícil, con las mismas frases y el mismo tono, y va a sonar tan verdadera como siempre.",
+    "La diferencia entre quien sostiene el cambio y quien no, casi nunca es la intensidad del trabajo inicial. Es tener preparada la respuesta antes de necesitarla, porque en el momento de la caída no vas a estar en condiciones de diseñarla.",
+    "Esta semana escribes el protocolo. Corto, concreto, ejecutable en veinte minutos por alguien que se siente pésimo."
+  ],
+  escrito:{
+    titulo:"El protocolo",
+    instruccion:"Escribe: tres señales de que volviste al ajuste viejo, los veinte minutos que vas a hacer cuando las detectes, y la persona a la que le vas a avisar.",
+    placeholder:"Señales:\nMis veinte minutos:\nA quién le aviso:"
+  },
+  accion:"Agenda dos cosas: una revisión de esto a treinta días, y la siguiente cosa que vas a sacar al mundo. La semana 7 no era el final, era el primer dato.",
+  guion:[
+    "Respira. Esta es la última de la serie.",
+    "Recorre las ocho semanas rápido. Qué se movió y qué no.",
+    "Trae a quien eras el primer día. Míralo sin condescendencia.",
+    "Ahora corre tu escena una vez más, completa.",
+    "Nota qué tan distinta se siente de la primera vez que la corriste.",
+    "Deja abierto lo que sigue. Termina cuando quieras."
+  ]
+}
+];
+
+/* ============================================================
+   ESTADO
+   ============================================================ */
+const CLAVE = "calibracion:estado";
+let E = { semana:1, dias:{}, diario:{}, inicio:null };
+
+async function leer(){
+  try{
+    if (window.storage){
+      const r = await window.storage.get(CLAVE);
+      if (r && r.value) return JSON.parse(r.value);
+    } else {
+      const r = localStorage.getItem(CLAVE);
+      if (r) return JSON.parse(r);
+    }
+  }catch(e){}
+  return null;
+}
+let pendiente = null;
+async function guardar(){
+  const s = JSON.stringify(E);
+  try{
+    if (window.storage) await window.storage.set(CLAVE, s);
+    else localStorage.setItem(CLAVE, s);
+  }catch(e){}
+}
+function guardarPronto(){
+  clearTimeout(pendiente);
+  pendiente = setTimeout(guardar, 600);
+}
+
+const hoy = () => new Date().toISOString().slice(0,10);
+const diasDe = w => Object.keys(E.dias).filter(k => E.dias[k] === w).length;
+const total  = () => Object.keys(E.dias).length;
+const hechaHoy = () => !!E.dias[hoy()];
+
+function racha(){
+  let n = 0;
+  const d = new Date();
+  if (!E.dias[hoy()]) d.setDate(d.getDate()-1);
+  for(;;){
+    const k = d.toISOString().slice(0,10);
+    if (!E.dias[k]) break;
+    n++; d.setDate(d.getDate()-1);
+  }
+  return n;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const $ = s => document.querySelector(s);
+let viendo = 1;
+
+function riel(){
+  $("#riel").innerHTML = SEMANAS.map(s=>{
+    const st = s.n === viendo ? "actual" : (diasDe(s.n) >= 5 ? "hecha" : "");
+    return `<button class="tick" data-state="${st}" data-w="${s.n}"
+      aria-label="Semana ${s.n}: ${s.titulo}" aria-current="${s.n===viendo}">
+      <span class="dot"></span><span class="n">${s.n}</span></button>`;
+  }).join("");
+  $("#riel").querySelectorAll(".tick").forEach(b=>{
+    b.onclick = () => { viendo = +b.dataset.w; pinta(); window.scrollTo({top:0,behavior:"smooth"}); };
+  });
+}
+
+function pinta(){
+  riel();
+  const s = SEMANAS[viendo-1];
+  const marcados = diasDe(s.n);
+  const texto = E.diario[s.n] || "";
+
+  $("#vista").innerHTML = `
+  <article class="card">
+    <p class="eyebrow">Semana ${s.n} de 8 · ${s.premisa}</p>
+    <h2>${s.titulo}</h2>
+    ${s.concepto.map((p,i)=>`<p${i===0?' class="lead"':''}>${p}</p>`).join("")}
+
+    <div class="block">
+      <h3>Práctica diaria · 12 minutos</h3>
+      <p>Respiración lenta hasta que el cuerpo baje, y luego el trabajo de la semana. Se hace todos los días, no cuando haya ganas.</p>
+      <div class="dias" id="dias">
+        ${[1,2,3,4,5,6,7].map(i=>`<span class="dia ${i<=marcados?'on':''}">${i}</span>`).join("")}
+      </div>
+      <div class="row">
+        <button class="btn" id="empezar" ${hechaHoy()?'disabled':''}>
+          ${hechaHoy() ? "Hoy ya está hecho" : "Empezar la sesión de hoy"}
+        </button>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>${s.escrito.titulo}</h3>
+      <p>${s.escrito.instruccion}</p>
+      <textarea id="diario" placeholder="${s.escrito.placeholder}">${texto}</textarea>
+      <div class="saved" id="aviso">Guardado</div>
+    </div>
+
+    <div class="block accion">
+      <h3>La acción de la semana</h3>
+      <p>${s.accion}</p>
+    </div>
+
+    <div class="meter">
+      <div><b>${total()}</b><small>sesiones</small></div>
+      <div><b>${racha()}</b><small>días seguidos</small></div>
+      <div><b>${marcados}/7</b><small>esta semana</small></div>
+    </div>
+
+    <div class="row">
+      ${viendo>1 ? `<button class="btn ghost" data-ir="${viendo-1}">Semana ${viendo-1}</button>`:""}
+      ${viendo<8 ? `<button class="btn ghost" data-ir="${viendo+1}">Semana ${viendo+1}</button>`:""}
+    </div>
+  </article>`;
+
+  $("#empezar").onclick = abrirSesion;
+  const ta = $("#diario");
+  ta.addEventListener("input", ()=>{
+    E.diario[viendo] = ta.value;
+    guardarPronto();
+    const a = $("#aviso"); a.classList.add("on");
+    clearTimeout(a._t); a._t = setTimeout(()=>a.classList.remove("on"), 1400);
+  });
+  document.querySelectorAll("[data-ir]").forEach(b=>{
+    b.onclick = ()=>{ viendo = +b.dataset.ir; pinta(); window.scrollTo({top:0,behavior:"smooth"}); };
+  });
+}
+
+/* ============================================================
+   SESIÓN
+   ============================================================ */
+const DUR = 12*60;
+const RESP = 3*60;
+let t, restante, cronometro;
+
+/* mantiene la pantalla del celular encendida durante los 12 minutos */
+let candado = null;
+async function trabarPantalla(){
+  try{ if (navigator.wakeLock) candado = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+function soltarPantalla(){
+  try{ if (candado) candado.release(); }catch(e){}
+  candado = null;
+}
+document.addEventListener("visibilitychange", ()=>{
+  if (document.visibilityState === "visible" && $("#sesion").classList.contains("on")) trabarPantalla();
+});
+
+function abrirSesion(){
+  const s = SEMANAS[viendo-1];
+  restante = DUR; t = 0;
+  trabarPantalla();
+  $("#sesion").classList.add("on");
+  document.body.style.overflow = "hidden";
+  $("#terminar").disabled = true;
+  $("#guion").textContent = "Respira sin forzar. Sigue el orbe: crece cuando inhalas, se encoge cuando exhalas.";
+
+  const lineas = s.guion;
+  const inicioGuion = RESP;
+  const paso = (DUR - RESP - 30) / lineas.length;
+
+  cronometro = setInterval(()=>{
+    t++; restante--;
+    const m = String(Math.floor(restante/60)).padStart(2,"0");
+    const sg = String(restante%60).padStart(2,"0");
+    $("#reloj").textContent = `${m}:${sg}`;
+    $("#barra").style.width = (t/DUR*100) + "%";
+    $("#cue").textContent = (t % 10) < 4 ? "inhala" : "exhala";
+
+    if (t >= inicioGuion){
+      const i = Math.min(lineas.length-1, Math.floor((t-inicioGuion)/paso));
+      const g = $("#guion");
+      if (g.dataset.i !== String(i)){
+        g.dataset.i = String(i);
+        g.classList.add("fade");
+        setTimeout(()=>{ g.textContent = lineas[i]; g.classList.remove("fade"); }, 500);
+      }
+    }
+    if (t >= DUR - 30) $("#terminar").disabled = false;
+    if (restante <= 0){ clearInterval(cronometro); $("#reloj").textContent = "listo"; }
+  }, 1000);
+}
+
+function cerrarSesion(){
+  clearInterval(cronometro);
+  soltarPantalla();
+  $("#sesion").classList.remove("on");
+  $("#guion").dataset.i = "";
+  document.body.style.overflow = "";
+}
+
+$("#salir").onclick = cerrarSesion;
+$("#terminar").onclick = async ()=>{
+  E.dias[hoy()] = viendo;
+  if (!E.inicio) E.inicio = hoy();
+  await guardar();
+  cerrarSesion();
+  pinta();
+};
+
+$("#reiniciar").onclick = async ()=>{
+  if (!confirm("Esto borra tus sesiones marcadas y todo lo escrito. ¿Seguir?")) return;
+  E = { semana:1, dias:{}, diario:{}, inicio:null };
+  await guardar();
+  viendo = 1; pinta();
+};
+
+/* ============================================================
+   ARRANQUE
+   ============================================================ */
+(async ()=>{
+  const g = await leer();
+  if (g) E = Object.assign(E, g);
+  // abre en la semana con trabajo pendiente
+  const ult = Object.values(E.dias).sort((a,b)=>b-a)[0] || 1;
+  viendo = diasDe(ult) >= 7 && ult < 8 ? ult+1 : ult;
+  pinta();
+})();
+
+/* funciona sin internet una vez abierta */
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
