@@ -2,7 +2,7 @@
    La app entera cabe en un HTML, así que la estrategia es simple:
    - navegación: red primero, caché si no hay señal
    - todo lo demás (iconos, tipografías): caché primero */
-const CACHE = "calibracion-v2";
+const CACHE = "calibracion-v3";
 const BASE = new URL("./", self.location).pathname;
 // Único origen externo que vale la pena cachear. Todo lo demás de afuera
 // —en particular el proxy del revisor— va directo a la red, sin tocar caché.

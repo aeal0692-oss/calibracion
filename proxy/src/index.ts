@@ -26,7 +26,7 @@ export interface Env {
 }
 
 const ORIGEN_APP = "https://aeal0692-oss.github.io";
-const MODELO = "claude-sonnet-4-6";
+const MODELO = "claude-sonnet-5";
 const MAX_TOKENS = 1000;
 const MIN_CARACTERES = 40;
 const MAX_CARACTERES = 6000;
