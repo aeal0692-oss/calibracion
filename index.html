@@ -205,6 +205,13 @@ textarea::placeholder{color:#6C7C8C}
 .barra{width:min(22rem,80vw);height:2px;background:var(--line);margin-top:.7rem;position:relative}
 .barra i{position:absolute;left:0;top:0;bottom:0;background:var(--signal);width:0}
 #sesion .row{justify-content:center}
+.sesion-controles{position:absolute;top:1rem;right:1rem;display:flex;gap:.5rem}
+.switch{
+  background:none;border:1px solid var(--line);border-radius:var(--radius);
+  color:var(--ink-dim);font-size:.76rem;padding:.25rem .55rem;letter-spacing:.02em;
+}
+.switch[aria-pressed="false"]{opacity:.4}
+.switch:hover{color:var(--ink);border-color:var(--ink-dim)}
 
 @media (prefers-reduced-motion:reduce){
   .orbe{animation:none;transform:scale(1.1)}
@@ -280,6 +287,10 @@ footer .sep{margin:0 .55rem}
 </div>
 
 <section id="sesion" aria-live="polite">
+  <div class="sesion-controles">
+    <button class="switch" id="switchTono" type="button" aria-pressed="true">tono</button>
+    <button class="switch" id="switchVoz" type="button" aria-pressed="true">voz</button>
+  </div>
   <div class="pacer">
     <div class="halo"></div>
     <div class="orbe"></div>
@@ -508,7 +519,7 @@ const SEMANAS = [
    ============================================================ */
 const CLAVE = "calibracion:estado";
 const ESTADOS = ["sin_marcar", "heredado", "comprobado"];
-const vacio = () => ({ semana:1, dias:{}, diario:{}, enunciados:{}, inicio:null });
+const vacio = () => ({ semana:1, dias:{}, diario:{}, enunciados:{}, inicio:null, audio:{ tono:true, voz:true } });
 let E = vacio();
 
 async function leer(){
@@ -972,11 +983,104 @@ async function pedirRevision(){
 }
 
 /* ============================================================
+   AUDIO DE LA SESIÓN
+   Tono de respiración (Web Audio API) + voz del guion
+   (SpeechSynthesis). El AudioContext se crea únicamente en el
+   clic de "Empezar la sesión": los navegadores bloquean audio
+   sin un gesto del usuario.
+   ============================================================ */
+let actx = null;
+let vozActiva = false;
+let vocesCache = null;
+
+if ("speechSynthesis" in window){
+  speechSynthesis.onvoiceschanged = () => { vocesCache = speechSynthesis.getVoices(); };
+}
+
+function vozEspanol(){
+  if (!vocesCache || !vocesCache.length) vocesCache = speechSynthesis.getVoices();
+  if (!vocesCache || !vocesCache.length) return null;
+  return vocesCache.find(v => /^es-MX/i.test(v.lang))
+      || vocesCache.find(v => /^es-ES/i.test(v.lang))
+      || vocesCache.find(v => /^es/i.test(v.lang))
+      || null;
+}
+
+function audioListo(){
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === "suspended") actx.resume().catch(()=>{});
+  return actx;
+}
+
+function cerrarAudio(){
+  if (actx){ actx.close().catch(()=>{}); actx = null; }
+}
+
+// Un tono corto y suave: seno puro con ataque/caída de ~80ms, ~200ms en total.
+function tonoRespiracion(fase){
+  if (!E.audio.tono || !actx) return;
+  const ctx = actx;
+  const ahora = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gan = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = fase === "inhala" ? 660 : 330;
+  const pico = vozActiva ? 0.05 : 0.15;
+  gan.gain.setValueAtTime(0, ahora);
+  gan.gain.linearRampToValueAtTime(pico, ahora + 0.08);
+  gan.gain.setValueAtTime(pico, ahora + 0.12);
+  gan.gain.linearRampToValueAtTime(0, ahora + 0.2);
+  osc.connect(gan);
+  gan.connect(ctx.destination);
+  osc.start(ahora);
+  osc.stop(ahora + 0.22);
+}
+
+function hablarLinea(texto){
+  if (!("speechSynthesis" in window) || !E.audio.voz) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto);
+  const voz = vozEspanol();
+  if (voz) u.voice = voz;
+  u.lang = voz ? voz.lang : "es-ES";
+  u.rate = 0.85;
+  u.pitch = 1.0;
+  vozActiva = true;
+  u.onend = () => { vozActiva = false; };
+  u.onerror = () => { vozActiva = false; };
+  speechSynthesis.speak(u);
+}
+
+function actualizarSwitches(){
+  const bt = $("#switchTono");
+  if (bt) bt.setAttribute("aria-pressed", String(E.audio.tono));
+  const bv = $("#switchVoz");
+  if (bv) bv.setAttribute("aria-pressed", String(E.audio.voz));
+}
+
+const swTono = $("#switchTono");
+if (swTono) swTono.onclick = () => {
+  E.audio.tono = !E.audio.tono;
+  actualizarSwitches();
+  guardar();
+};
+const swVoz = $("#switchVoz");
+if (swVoz) swVoz.onclick = () => {
+  E.audio.voz = !E.audio.voz;
+  if (!E.audio.voz && "speechSynthesis" in window){
+    speechSynthesis.cancel();
+    vozActiva = false;
+  }
+  actualizarSwitches();
+  guardar();
+};
+
+/* ============================================================
    SESIÓN
    ============================================================ */
 const DUR = 12*60;
 const RESP = 3*60;
-let t, restante, cronometro;
+let t, restante, cronometro, faseAnterior;
 
 /* mantiene la pantalla del celular encendida durante los 12 minutos */
 let candado = null;
@@ -988,17 +1092,25 @@ function soltarPantalla(){
   candado = null;
 }
 document.addEventListener("visibilitychange", ()=>{
-  if (document.visibilityState === "visible" && $("#sesion").classList.contains("on")) trabarPantalla();
+  if (document.visibilityState === "visible" && $("#sesion").classList.contains("on")){
+    trabarPantalla();
+    if (actx && actx.state === "suspended") actx.resume().catch(()=>{});
+  }
 });
 
 function abrirSesion(){
   const s = SEMANAS[viendo-1];
-  restante = DUR; t = 0;
+  restante = DUR; t = 0; faseAnterior = null;
+  audioListo();
+  vozActiva = false;
+  actualizarSwitches();
   trabarPantalla();
   $("#sesion").classList.add("on");
   document.body.style.overflow = "hidden";
   $("#terminar").disabled = true;
   $("#guion").textContent = "Respira sin forzar. Sigue el orbe: crece cuando inhalas, se encoge cuando exhalas.";
+  tonoRespiracion("inhala");
+  faseAnterior = "inhala";
 
   const lineas = s.guion;
   const inicioGuion = RESP;
@@ -1010,7 +1122,12 @@ function abrirSesion(){
     const sg = String(restante%60).padStart(2,"0");
     $("#reloj").textContent = `${m}:${sg}`;
     $("#barra").style.width = (t/DUR*100) + "%";
-    $("#cue").textContent = (t % 10) < 4 ? "inhala" : "exhala";
+    const fase = (t % 10) < 4 ? "inhala" : "exhala";
+    if (fase !== faseAnterior){
+      faseAnterior = fase;
+      tonoRespiracion(fase);
+    }
+    $("#cue").textContent = fase;
 
     if (t >= inicioGuion){
       const i = Math.min(lineas.length-1, Math.floor((t-inicioGuion)/paso));
@@ -1018,7 +1135,7 @@ function abrirSesion(){
       if (g.dataset.i !== String(i)){
         g.dataset.i = String(i);
         g.classList.add("fade");
-        setTimeout(()=>{ g.textContent = lineas[i]; g.classList.remove("fade"); }, 500);
+        setTimeout(()=>{ g.textContent = lineas[i]; g.classList.remove("fade"); hablarLinea(lineas[i]); }, 500);
       }
     }
     if (t >= DUR - 30) $("#terminar").disabled = false;
@@ -1029,6 +1146,9 @@ function abrirSesion(){
 function cerrarSesion(){
   clearInterval(cronometro);
   soltarPantalla();
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  vozActiva = false;
+  cerrarAudio();
   $("#sesion").classList.remove("on");
   $("#guion").dataset.i = "";
   document.body.style.overflow = "";
@@ -1162,6 +1282,7 @@ function combinarListas(local, entra){
 function combinarEstados(local, entra){
   const r = vacio();
   r.semana = local.semana || 1;
+  r.audio = Object.assign({}, r.audio, local.audio);
   r.inicio = [local.inicio, entra.inicio].filter(Boolean).sort()[0] || null;
   // Un día marcado en cualquiera de los dos cuenta; si chocan, gana el local.
   r.dias = Object.assign({}, entra.dias, local.dias);
@@ -1184,6 +1305,11 @@ function combinarEstados(local, entra){
   const g = await leer();
   if (g) E = Object.assign(E, g);
   if (!E.enunciados || typeof E.enunciados !== "object") E.enunciados = {};
+  if (!E.audio || typeof E.audio !== "object") E.audio = { tono:true, voz:true };
+  if (!("speechSynthesis" in window)){
+    const sw = document.getElementById("switchVoz");
+    if (sw) sw.remove();
+  }
   // Parte el textarea viejo en enunciados donde haga falta. E.diario se conserva.
   let migro = false;
   for (let w = 1; w <= 8; w++){ if (migrarEnunciados(w)) migro = true; }
