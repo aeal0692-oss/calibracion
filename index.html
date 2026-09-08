@@ -281,7 +281,7 @@ footer .sep{margin:0 .55rem}
 
   <footer>
     <button id="exportar">Descargar respaldo</button><span class="sep">·</span><button id="importar">Restaurar respaldo</button><span class="sep">·</span><button id="reiniciar">Borrar todo y empezar de nuevo</button>
-    <input type="file" id="archivo" accept="application/json,.json" hidden>
+    <input type="file" id="archivo" accept=".json,application/json,text/plain,*/*" hidden>
     <p class="respaldo-aviso" id="respaldoAviso"></p>
   </footer>
 </div>
@@ -519,7 +519,7 @@ const SEMANAS = [
    ============================================================ */
 const CLAVE = "calibracion:estado";
 const ESTADOS = ["sin_marcar", "heredado", "comprobado"];
-const vacio = () => ({ semana:1, dias:{}, diario:{}, enunciados:{}, inicio:null, audio:{ tono:true, voz:true } });
+const vacio = () => ({ semana:1, dias:{}, diario:{}, enunciados:{}, recuperados:{}, inicio:null, audio:{ tono:true, voz:true } });
 let E = vacio();
 
 async function leer(){
@@ -581,6 +581,19 @@ const nuevoEnunciado = (texto = "") => ({ id: idNuevo(), texto, estado: "sin_mar
 const listaDe = w => E.enunciados[w] || [];
 
 /**
+ * Compara enunciados ignorando mayúsculas, espacios repetidos, puntuación
+ * final y el prefijo «Yo soy alguien que». La usan tanto la recuperación
+ * de huérfanos como la fusión al importar, porque en los dos casos el
+ * mismo enunciado puede llegar escrito con variaciones menores.
+ */
+function normalizarTexto(t){
+  let n = (t || "").toLowerCase().trim().replace(/\s+/g, " ");
+  n = n.replace(/^yo soy alguien que\s*/, "");
+  n = n.replace(/[.,;:!?¡¿…]+$/, "").trim();
+  return n;
+}
+
+/**
  * Parte el textarea viejo en enunciados, una línea cada uno.
  * Solo corre si la semana usa formato de lista, hay texto en E.diario
  * y todavía no existe E.enunciados[w]. E.diario NO se borra: queda como
@@ -593,6 +606,35 @@ function migrarEnunciados(w){
   if (!lineas.length) return false;
   E.enunciados[w] = lineas.map(l => nuevoEnunciado(l));
   return true;
+}
+
+/**
+ * La migración de arriba solo corría si E.enunciados[w] no existía. En la
+ * semana 1 ya existía (otro formato), así que el texto de E.diario quedó
+ * guardado pero invisible. Esto recupera, una sola vez por semana, las
+ * líneas del diario que no estén ya como enunciado (comparando texto
+ * normalizado) y las agrega con estado "sin_marcar". E.diario no se toca.
+ * Devuelve null si ya se hizo antes, o el número de enunciados agregados.
+ */
+function recuperarDiarioHuerfano(w){
+  if (formatoDe(w) !== "lista") return null;
+  if (!E.recuperados) E.recuperados = {};
+  if (E.recuperados[w]) return null;
+  const lineas = (E.diario[w] || "").split("\n").map(l => l.trim()).filter(Boolean);
+  const existentes = new Set(listaDe(w).map(e => normalizarTexto(e.texto)));
+  let recuperados = 0;
+  if (lineas.length){
+    if (!E.enunciados[w]) E.enunciados[w] = [];
+    lineas.forEach(l=>{
+      const norm = normalizarTexto(l);
+      if (!norm || existentes.has(norm)) return;
+      E.enunciados[w].push(nuevoEnunciado(l));
+      existentes.add(norm);
+      recuperados++;
+    });
+  }
+  E.recuperados[w] = true;
+  return recuperados;
 }
 
 // Lo que ve el revisor: los textos concatenados, igual que antes.
@@ -649,7 +691,13 @@ function pinta(){
   const marcados = diasDe(s.n);
   const texto = E.diario[s.n] || "";
   const esLista = formatoDe(s.n) === "lista";
-  if (migrarEnunciados(s.n)) guardar();
+  let necesitaGuardar = migrarEnunciados(s.n);
+  const recuperados = recuperarDiarioHuerfano(s.n);
+  if (recuperados !== null){
+    necesitaGuardar = true;
+    if (recuperados) console.log(`Calibración: se recuperaron ${recuperados} enunciado(s) de la semana ${s.n} desde el diario.`);
+  }
+  if (necesitaGuardar) guardar();
 
   $("#vista").innerHTML = `
   <article class="card">
@@ -1258,6 +1306,7 @@ function sanearEstado(x){
         };
       }).filter(Boolean);
     }
+    if (x.recuperados && x.recuperados[w] === true) s.recuperados[w] = true;
   }
   return s;
 }
@@ -1266,15 +1315,32 @@ function sanearEstado(x){
  * Une por id. Si un id existe de los dos lados gana el que tenga
  * estado distinto de "sin_marcar"; si los dos están marcados y no
  * coinciden, se queda el de este dispositivo.
+ * crypto.randomUUID() genera ids distintos en cada dispositivo, así que
+ * si el id no empata pero el texto normalizado sí, se tratan como el
+ * mismo enunciado (mismo criterio que recuperarDiarioHuerfano) en vez
+ * de duplicarlo.
  */
 function combinarListas(local, entra){
   const orden = [];
   const mapa = new Map();
-  (local || []).forEach(e=>{ mapa.set(e.id, e); orden.push(e.id); });
+  const porTexto = new Map();
+  (local || []).forEach(e=>{
+    mapa.set(e.id, e);
+    orden.push(e.id);
+    const norm = normalizarTexto(e.texto);
+    if (norm && !porTexto.has(norm)) porTexto.set(norm, e.id);
+  });
   (entra || []).forEach(e=>{
-    if (!mapa.has(e.id)){ mapa.set(e.id, e); orden.push(e.id); return; }
-    const mio = mapa.get(e.id);
-    if (mio.estado === "sin_marcar" && e.estado !== "sin_marcar") mapa.set(e.id, e);
+    const norm = normalizarTexto(e.texto);
+    let id = mapa.has(e.id) ? e.id : (norm && porTexto.get(norm)) || e.id;
+    if (!mapa.has(id)){
+      mapa.set(id, e);
+      orden.push(id);
+      if (norm && !porTexto.has(norm)) porTexto.set(norm, id);
+      return;
+    }
+    const mio = mapa.get(id);
+    if (mio.estado === "sin_marcar" && e.estado !== "sin_marcar") mapa.set(id, Object.assign({}, e, { id }));
   });
   return orden.map(id => mapa.get(id));
 }
@@ -1286,6 +1352,7 @@ function combinarEstados(local, entra){
   r.inicio = [local.inicio, entra.inicio].filter(Boolean).sort()[0] || null;
   // Un día marcado en cualquiera de los dos cuenta; si chocan, gana el local.
   r.dias = Object.assign({}, entra.dias, local.dias);
+  r.recuperados = Object.assign({}, entra.recuperados, local.recuperados);
   for (let w = 1; w <= 8; w++){
     const a = local.diario[w] || "";
     const b = entra.diario[w] || "";
@@ -1305,14 +1372,24 @@ function combinarEstados(local, entra){
   const g = await leer();
   if (g) E = Object.assign(E, g);
   if (!E.enunciados || typeof E.enunciados !== "object") E.enunciados = {};
+  if (!E.recuperados || typeof E.recuperados !== "object") E.recuperados = {};
   if (!E.audio || typeof E.audio !== "object") E.audio = { tono:true, voz:true };
   if (!("speechSynthesis" in window)){
     const sw = document.getElementById("switchVoz");
     if (sw) sw.remove();
   }
-  // Parte el textarea viejo en enunciados donde haga falta. E.diario se conserva.
+  // Parte el textarea viejo en enunciados donde haga falta, y recupera los
+  // que quedaron huérfanos por el diario (ver recuperarDiarioHuerfano).
+  // E.diario se conserva en ambos casos.
   let migro = false;
-  for (let w = 1; w <= 8; w++){ if (migrarEnunciados(w)) migro = true; }
+  for (let w = 1; w <= 8; w++){
+    if (migrarEnunciados(w)) migro = true;
+    const recuperados = recuperarDiarioHuerfano(w);
+    if (recuperados !== null){
+      migro = true;
+      if (recuperados) console.log(`Calibración: se recuperaron ${recuperados} enunciado(s) de la semana ${w} desde el diario.`);
+    }
+  }
   if (migro) await guardar();
   // abre en la semana con trabajo pendiente
   const ult = Object.values(E.dias).sort((a,b)=>b-a)[0] || 1;
